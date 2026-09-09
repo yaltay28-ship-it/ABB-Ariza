@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Araç Arıza Rehberi</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0d14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Arıza Rehberi">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
     --bg:#0a0d14;
@@ -218,6 +224,24 @@
     font-family:var(--mono);font-size:13px;
     padding:30px 16px;
   }
+  #offlineNote{
+    display:none;
+    margin:0 16px 4px;
+    padding:9px 12px;
+    border-radius:9px;
+    background:var(--teal-dim);
+    border:1px solid #2a6b52;
+    color:var(--teal);
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.4px;
+    line-height:1.45;
+  }
+  #offlineNote.warn{
+    background:var(--amber-dim);
+    border-color:#6b5427;
+    color:var(--amber);
+  }
 </style>
 </head>
 <body>
@@ -240,6 +264,8 @@
     <button class="clear-btn" id="clearBtn">✕</button>
   </div>
 </div>
+
+<div id="offlineNote"></div>
 
 <div id="detail"></div>
 <div class="section-head"><b id="sectionTitle">TÜM ARIZA LİSTESİ</b><span id="sectionCount"></span></div>
@@ -345,6 +371,38 @@ searchEl.addEventListener('blur', () => searchBox.classList.remove('focused'));
 clearBtn.addEventListener('click', () => { searchEl.value=""; runSearch(); searchEl.focus(); });
 
 runSearch();
+
+// ---- Çevrimdışı destek (Service Worker) ----
+const noteEl = document.getElementById('offlineNote');
+
+function showNote(msg, warn){
+  noteEl.textContent = msg;
+  noteEl.className = warn ? 'warn' : '';
+  noteEl.style.display = 'block';
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(() => {
+      if (navigator.serviceWorker.controller) {
+        if (!navigator.onLine) showNote('ÇEVRİMDIŞI MOD — kayıtlı veriler görüntüleniyor');
+      } else {
+        showNote('ÇEVRİMDIŞI KULLANIM HAZIRLANIYOR — video dahil indiriliyor, lütfen bu ekranda kalın', true);
+        navigator.serviceWorker.ready.then(() => {
+          setTimeout(() => {
+            showNote('ÇEVRİMDIŞI KULLANIMA HAZIR — internet olmadan da açılır');
+            setTimeout(() => { noteEl.style.display = 'none'; }, 6000);
+          }, 2500);
+        });
+      }
+    }).catch(err => console.warn('SW kaydedilemedi:', err));
+  });
+} else {
+  showNote('Bu tarayıcı çevrimdışı modu desteklemiyor', true);
+}
+
+window.addEventListener('offline', () => showNote('ÇEVRİMDIŞI MOD — kayıtlı veriler görüntüleniyor'));
+window.addEventListener('online', () => { noteEl.style.display = 'none'; });
 </script>
 </body>
 </html>
